@@ -28,9 +28,11 @@ This repository preserves a proven, repeatable process for vCenter certificate r
 
 1. Ensure Beads (`bd`) is installed on your system
 2. Review the complete renewal prompt:
+
    ```bash
    cat vcenter-tls-renewal-prompt.md
    ```
+
 3. Provide the prompt to your infrastructure automation agent (e.g., Sonnet)
 4. Follow along as the agent executes each phase with your approval
 5. Validate the new certificate is active and services are healthy
@@ -84,6 +86,7 @@ This repository preserves a proven, repeatable process for vCenter certificate r
 - **Running VMs:** Not affected — they continue on ESXi hosts
 - **Rollback:** Full backup and recovery procedure included if needed
 - **Network:** vCenter is WiFi-connected; IP address `192.168.30.40` is included as a SAN for failover access if DNS becomes unavailable
+- **⚠️ VECS Troubleshooting:** If `certificate-manager` completes but the OLD cert is still served, VECS may need manual update. See "VECS Fallback Procedure" in `vcenter-tls-renewal-prompt.md`
 
 ## Repository Standards
 
@@ -99,12 +102,13 @@ See `standards/02_GITFLOW.md` for complete workflow details.
 ## Questions?
 
 Refer to:
+
 - `vcenter-tls-renewal-prompt.md` — Complete step-by-step renewal guide
 - `standards/` — Bjzy Labs infrastructure standards and best practices
 - Home Lab Docs — [AGENTS Workspace (Notion)](https://www.notion.so/AGENTS-Workspace-25a3569aa25581069532e793601f1fba)
 
 ---
 
-**Last Updated:** January 31, 2026
+**Last Updated:** February 1, 2026
 **Maintained By:** Bjzy Labs Infrastructure Team
 **Repository:** [BjzyLabs/vCenterCert](https://github.com/BjzyLabs/vCenterCert)

@@ -49,6 +49,7 @@ bd add "vCenter TLS renewal – Step CA" \
 ```
 
 Use Beads to:
+
 - Record preflight validation results (pass/fail for each check)
 - Capture assumptions, risks, and decisions
 - Track checkpoints requiring operator confirmation
@@ -77,6 +78,7 @@ Use Beads to:
 **Do NOT proceed past this phase until ALL checks pass.**
 
 Create a bead:
+
 ```bash
 bd add "Preflight validation – vCenter TLS renewal" \
   "Validating all prerequisites before certificate renewal"
@@ -97,10 +99,13 @@ Record every check result (pass/fail) in this bead.
 | Step CA root fingerprint | Discovered (see 0.3) | ❓ |
 
 **Agent action:**
+
 1. Attempt to retrieve provisioner password from Vault:
+
    ```bash
    vault kv get -field=password kvProd_v2/infrastructure/step-ca
    ```
+
 2. If Vault lookup fails, **immediately ask operator** for the provisioner password
 3. Confirm VCSA root access method (password or SSH key)
 4. **STOP if any credential is unavailable** — record in Beads and halt
@@ -133,13 +138,13 @@ command -v bd || echo "FAIL: Beads (bd) not found"
 
 ## 0.3 Step CA Bootstrap & Fingerprint Discovery
 
-### Check if already bootstrapped:
+### Check if already bootstrapped
 
 ```bash
 step ca health 2>/dev/null && echo "Step CA: Already bootstrapped" || echo "Step CA: Not bootstrapped"
 ```
 
-### If ALREADY bootstrapped:
+### If ALREADY bootstrapped
 
 ```bash
 # Retrieve stored fingerprint
@@ -152,10 +157,11 @@ echo "Configured CA URL: $STEP_CA_URL"
 ```
 
 **Verify with operator:**
+
 - Does the CA URL match `https://ca.bjzy.me`?
 - Is this the expected fingerprint?
 
-### If NOT bootstrapped:
+### If NOT bootstrapped
 
 ```bash
 # Retrieve root certificate and fingerprint (DO NOT TRUST YET)
@@ -168,6 +174,7 @@ openssl x509 -in /tmp/step_root_discovery.crt -text -noout | head -20
 ```
 
 **PAUSE — Operator must verify:**
+
 - Is this fingerprint correct for your Step CA?
 - Cross-reference with your CA deployment records or another trusted source
 
@@ -192,17 +199,18 @@ step ca health
 
 ## 0.4 Step CA Authorization
 
-### Verify provisioner access:
+### Verify provisioner access
 
 ```bash
 step ca provisioner list
 ```
 
 **Record:**
+
 - Provisioner name: ____________
 - Provisioner type (JWK, OIDC, ACME, etc.): ____________
 
-### Test certificate issuance capability:
+### Test certificate issuance capability
 
 ```bash
 # Dry-run: Check if we can authenticate (will prompt for password)
@@ -211,6 +219,7 @@ step ca token test.example.com --provisioner <PROVISIONER_NAME>
 ```
 
 **STOP if:**
+
 - No usable provisioner exists
 - Authentication fails
 - Provisioner password is incorrect
@@ -230,6 +239,7 @@ ssh root@vcenter.homelab.bjzy.me \
 **Expected output:** `Verify return code: 0 (ok)`
 
 **If verification fails (non-zero return code):**
+
 - Step CA root is NOT trusted by VCSA
 - This must be resolved before proceeding (import root CA into VCSA trust store)
 - **STOP and record in Beads** — this is a blocking issue
@@ -240,7 +250,7 @@ ssh root@vcenter.homelab.bjzy.me \
 
 ## 0.6 VCSA Access Validation
 
-### DNS Resolution:
+### DNS Resolution
 
 ```bash
 dig vcenter.homelab.bjzy.me +short
@@ -250,17 +260,18 @@ dig vcenter.homelab.bjzy.me +short
 
 **STOP if:** Resolution fails or returns unexpected IP.
 
-### SSH Access:
+### SSH Access
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me 'hostname && uptime'
 ```
 
 **STOP if:**
+
 - SSH connection fails
 - Root access is unavailable
 
-### Current Certificate Inspection:
+### Current Certificate Inspection
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me \
@@ -268,6 +279,7 @@ ssh root@vcenter.homelab.bjzy.me \
 ```
 
 **Record in Beads:**
+
 - Current cert subject
 - Current cert issuer
 - Current cert expiration date
@@ -296,6 +308,7 @@ ssh root@vcenter.homelab.bjzy.me \
 **If ANY check fails → STOP, document in Beads, do NOT proceed.**
 
 **Record in Beads:**
+
 ```bash
 bd add "Preflight complete – all checks passed" \
   "All prerequisites validated. Ready to proceed with certificate issuance."
@@ -308,12 +321,13 @@ bd add "Preflight complete – all checks passed" \
 **Before making any changes, preserve the current state.**
 
 Create a bead:
+
 ```bash
 bd add "Backup existing certificate" \
   "Creating backup of current VCSA Machine SSL certificate and key"
 ```
 
-### Create timestamped backup on VCSA:
+### Create timestamped backup on VCSA
 
 ```bash
 BACKUP_DIR="/root/cert_backup_$(date +%Y%m%d_%H%M%S)"
@@ -332,12 +346,13 @@ ssh root@vcenter.homelab.bjzy.me "mkdir -p $BACKUP_DIR && \
 # 📜 PHASE 2: ISSUE NEW CERTIFICATE
 
 Create a bead:
+
 ```bash
 bd add "Issue vCenter certificate" \
   "Issuing new Machine SSL certificate via Step CA"
 ```
 
-### Issue certificate with all SANs and 1-year validity:
+### Issue certificate with all SANs and 1-year validity
 
 ```bash
 step ca certificate "vcenter.homelab.bjzy.me" vcsa.pem vcsa.key \
@@ -353,7 +368,7 @@ step ca certificate "vcenter.homelab.bjzy.me" vcsa.pem vcsa.key \
 
 *Agent will be prompted for provisioner password (use credential from 0.1).*
 
-### Verify certificate contents:
+### Verify certificate contents
 
 ```bash
 # Check subject and SANs
@@ -366,7 +381,7 @@ openssl x509 -in vcsa.pem -noout -dates
 openssl x509 -in vcsa.pem -noout -issuer
 ```
 
-### Verify key matches certificate:
+### Verify key matches certificate
 
 ```bash
 # These two MD5 hashes MUST match
@@ -375,6 +390,7 @@ openssl rsa  -noout -modulus -in vcsa.key | openssl md5
 ```
 
 **PAUSE — Operator verifies:**
+
 - CN is `vcenter.homelab.bjzy.me`
 - All 4 SANs are present
 - Validity is ~1 year from now
@@ -387,12 +403,13 @@ openssl rsa  -noout -modulus -in vcsa.key | openssl md5
 # ✂️ PHASE 3: PREPARE CERTIFICATE FILES
 
 Create a bead:
+
 ```bash
 bd add "Prepare certificate files for VMware" \
   "Splitting PEM bundle into VMware-compatible format"
 ```
 
-### Verify PEM bundle structure:
+### Verify PEM bundle structure
 
 ```bash
 # Count certificates in the bundle
@@ -403,12 +420,13 @@ echo "Certificate count in bundle: $CERT_COUNT"
 **Expected:** 2 or more (leaf cert + CA chain)
 
 **If count is 1:** Step CA only provided the leaf certificate. Fetch chain separately:
+
 ```bash
 step ca root ca_root.crt
 # Then manually construct chain
 ```
 
-### Split PEM into leaf and chain:
+### Split PEM into leaf and chain
 
 ```bash
 awk '
@@ -418,7 +436,7 @@ awk '
 ' vcsa.pem
 ```
 
-### Verify split was successful:
+### Verify split was successful
 
 ```bash
 # Leaf certificate
@@ -445,24 +463,25 @@ openssl verify -CAfile ca_chain.crt vcsa.crt
 # 📤 PHASE 4: TRANSFER TO VCSA
 
 Create a bead:
+
 ```bash
 bd add "Transfer certificate files to VCSA" \
   "Copying certificate, key, and chain to VCSA"
 ```
 
-### Transfer files:
+### Transfer files
 
 ```bash
 scp vcsa.crt vcsa.key ca_chain.crt root@vcenter.homelab.bjzy.me:/root/
 ```
 
-### Verify transfer:
+### Verify transfer
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me 'ls -la /root/vcsa.crt /root/vcsa.key /root/ca_chain.crt'
 ```
 
-### Set secure permissions:
+### Set secure permissions
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me 'chmod 600 /root/vcsa.key && chmod 644 /root/vcsa.crt /root/ca_chain.crt'
@@ -475,6 +494,7 @@ ssh root@vcenter.homelab.bjzy.me 'chmod 600 /root/vcsa.key && chmod 644 /root/vc
 # 🔧 PHASE 5: APPLY CERTIFICATE
 
 Create a bead:
+
 ```bash
 bd add "Apply certificate via certificate-manager" \
   "Replacing Machine SSL certificate on VCSA"
@@ -483,6 +503,7 @@ bd add "Apply certificate via certificate-manager" \
 ### ⚠️ SERVICE IMPACT WARNING
 
 **During certificate replacement:**
+
 - vCenter Web UI will be briefly unavailable
 - API/SDK connections will drop temporarily
 - ESXi hosts may briefly lose connection to vCenter
@@ -491,13 +512,13 @@ bd add "Apply certificate via certificate-manager" \
 
 **PAUSE — Operator must confirm ready to proceed.**
 
-### Start certificate-manager:
+### Start certificate-manager
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me '/usr/lib/vmware-vmca/bin/certificate-manager'
 ```
 
-### Interactive menu selections:
+### Interactive menu selections
 
 1. Select **Option 1**: Replace Machine SSL certificate with Custom Certificate
 2. When prompted for certificate file: `/root/vcsa.crt`
@@ -505,14 +526,52 @@ ssh root@vcenter.homelab.bjzy.me '/usr/lib/vmware-vmca/bin/certificate-manager'
 4. When prompted for CA chain: `/root/ca_chain.crt`
 5. Confirm replacement when prompted
 
-### If certificate-manager fails or services don't restart:
+### If certificate-manager fails or services don't restart
 
 ```bash
 # Manual service restart (only if needed)
 ssh root@vcenter.homelab.bjzy.me 'service-control --stop --all && service-control --start --all'
 ```
 
-### Monitor service startup:
+### ⚠️ CRITICAL: VECS Fallback Procedure (Learned Feb 2026)
+
+**If certificate-manager completes but the OLD certificate is still being served**, the issue is likely that VECS (VMware Endpoint Certificate Store) was not updated. vCenter reads certificates from VECS on startup, not directly from filesystem files.
+
+#### Diagnose the mismatch
+
+```bash
+# Check filesystem cert timestamp
+ssh root@vcenter.homelab.bjzy.me 'openssl x509 -in /etc/vmware-vpx/ssl/rui.crt -noout -dates'
+
+# Check VECS cert timestamp (should match filesystem)
+ssh root@vcenter.homelab.bjzy.me '/usr/lib/vmware-vmafd/bin/vecs-cli entry getcert --store MACHINE_SSL_CERT --alias __MACHINE_CERT | openssl x509 -noout -dates'
+```
+
+**If timestamps differ**, VECS has the old cert and needs manual update.
+
+#### Fix: Manual VECS update
+
+```bash
+# SSH to VCSA with shell access
+ssh root@vcenter.homelab.bjzy.me
+shell  # Enable bash shell
+
+# Delete old VECS entry
+/usr/lib/vmware-vmafd/bin/vecs-cli entry delete --store MACHINE_SSL_CERT --alias __MACHINE_CERT -y
+
+# Create new VECS entry from filesystem files
+/usr/lib/vmware-vmafd/bin/vecs-cli entry create --store MACHINE_SSL_CERT --alias __MACHINE_CERT \
+  --cert /etc/vmware-vpx/ssl/rui.crt \
+  --key /etc/vmware-vpx/ssl/rui.key
+
+# Restart ONLY rhttpproxy (minimal, safe restart)
+service-control --stop vmware-rhttpproxy
+service-control --start vmware-rhttpproxy
+```
+
+**This approach is safer than restarting all services** and directly addresses the VECS mismatch.
+
+### Monitor service startup
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me 'service-control --status --all' | grep -v "Running"
@@ -527,12 +586,13 @@ ssh root@vcenter.homelab.bjzy.me 'service-control --status --all' | grep -v "Run
 # ✅ PHASE 6: VALIDATION
 
 Create a bead:
+
 ```bash
 bd add "Post-replacement validation" \
   "Verifying new certificate is active and services healthy"
 ```
 
-### Verify new certificate is active:
+### Verify new certificate is active
 
 ```bash
 openssl s_client -connect vcenter.homelab.bjzy.me:443 \
@@ -541,12 +601,13 @@ openssl s_client -connect vcenter.homelab.bjzy.me:443 \
 ```
 
 **Verify:**
+
 - Subject matches expected CN
 - Issuer is Step CA
 - Dates show ~1 year validity
 - All SANs are present
 
-### Test all SANs:
+### Test all SANs
 
 ```bash
 # Primary FQDN
@@ -562,7 +623,7 @@ openssl s_client -connect vcenter:443 </dev/null 2>/dev/null | grep -i "verify r
 curl -sS -o /dev/null -w "%{http_code}" https://192.168.30.40/ui/
 ```
 
-### vCenter service health:
+### vCenter service health
 
 ```bash
 ssh root@vcenter.homelab.bjzy.me 'service-control --status --all' | grep -v "Running"
@@ -570,11 +631,12 @@ ssh root@vcenter.homelab.bjzy.me 'service-control --status --all' | grep -v "Run
 
 **Expected:** No output (all services running).
 
-### Browser validation:
+### Browser validation
 
 Operator should manually verify in browser:
-- [ ] https://vcenter.homelab.bjzy.me — loads without certificate warning
-- [ ] https://192.168.30.40 — loads without certificate warning
+
+- [ ] <https://vcenter.homelab.bjzy.me> — loads without certificate warning
+- [ ] <https://192.168.30.40> — loads without certificate warning
 - [ ] Certificate details show correct issuer (Step CA) and validity
 
 **Record in Beads:** All validation results.
@@ -640,6 +702,7 @@ Upon successful completion:
 - ✅ Full audit trail in Beads
 
 **Final Beads entry:**
+
 ```bash
 bd add "vCenter TLS renewal complete" \
   "Machine SSL certificate successfully renewed via Step CA. Valid until <EXPIRY_DATE>. All validation passed."
