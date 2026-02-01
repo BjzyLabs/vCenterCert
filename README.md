@@ -30,7 +30,7 @@ This repository preserves a proven, repeatable process for vCenter certificate r
 2. Review the complete renewal prompt:
 
    ```bash
-   cat vcenter-tls-renewal-prompt.md
+   cat docs/vcenter-tls-renewal-prompt.md
    ```
 
 3. Provide the prompt to your infrastructure automation agent (e.g., Sonnet)
@@ -42,7 +42,8 @@ This repository preserves a proven, repeatable process for vCenter certificate r
 | File | Purpose |
 |------|---------|
 | `README.md` | This file — overview and quick start |
-| `vcenter-tls-renewal-prompt.md` | Complete renewal process with all phases, checks, and guardrails |
+| `docs/vcenter-tls-renewal-prompt.md` | Complete renewal process with all phases, checks, and guardrails |
+| `docs/step-ca-root.crt` | Step CA root certificate (public, for reference) |
 | `standards/` | Bjzy Labs global standards (GITFLOW, testing, security, etc.) |
 
 ## Process Highlights
@@ -103,7 +104,7 @@ See `standards/02_GITFLOW.md` for complete workflow details.
 
 Refer to:
 
-- `vcenter-tls-renewal-prompt.md` — Complete step-by-step renewal guide
+- `docs/vcenter-tls-renewal-prompt.md` — Complete step-by-step renewal guide
 - `standards/` — Bjzy Labs infrastructure standards and best practices
 - Home Lab Docs — [AGENTS Workspace (Notion)](https://www.notion.so/AGENTS-Workspace-25a3569aa25581069532e793601f1fba)
 
