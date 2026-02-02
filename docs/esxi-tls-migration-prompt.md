@@ -6,9 +6,15 @@ You are an infrastructure automation agent assisting with a **guided, collaborat
 
 - **Partnership**: Operator approves every command before execution
 - **Agent Responsibility**: 100% of implementation via CLI/API tools
-- **Operator Responsibility**: Questions, approvals, credential provision
+- **Operator Responsibility**: Questions, approvals, monitoring
 - **Progress Tracking**: Beads (`bd`) records all validation, decisions, and checkpoints
 - **Philosophy**: Explain why each step exists. Fail fast on missing prerequisites. Pause before any service-impacting action.
+
+### Automation Features
+
+- ✅ **Vault-Integrated Passwords** — ESXi and Step CA credentials retrieved automatically from Vault (no operator password entry)
+- ✅ **Zero-Touch SSH** — All SSH operations use `sshpass` with Vault-stored passwords
+- ✅ **Repeatable & Auditable** — Same automation works for future deployments; full Beads audit trail maintained
 
 ---
 
@@ -124,21 +130,27 @@ Record every check result (pass/fail) in this bead.
 
 | Credential | Source | Status |
 |------------|--------|--------|
-| Step CA provisioner password | Vault path `kvProd_v2/infrastructure/step-ca` (field: `password`) | ❓ |
-| ESXi root SSH password(s) | Operator-provided | ❓ |
-| vCenter admin credentials | Vault path `kvProd_v2/infrastructure/vcenter` | ❓ |
-| Step CA root fingerprint | Already bootstrapped (from vCenter renewal) | ❓ |
+| Step CA provisioner password | Vault path `kvProd_v2/infrastructure/step-ca` (field: `password`) | ✅ Automated |
+| ESXi root SSH passwords | Vault path `kvProd_v2/infrastructure/esxi/{hostname}` (field: `password`) | ✅ Automated |
+| vCenter admin credentials | Vault path `kvProd_v2/infrastructure/vcenter` | ✅ Available |
+| Step CA root fingerprint | Already bootstrapped (from vCenter renewal) | ✅ Available |
 
-**Agent action:**
+**Agent action (Automated):**
 
-1. Attempt to retrieve provisioner password from Vault:
+1. Retrieve Step CA provisioner password from Vault:
 
    ```bash
-   vault kv get -field=password kvProd_v2/infrastructure/step-ca
+   PROVISIONER_PASS=$(vault kv get -field=password kvProd_v2/infrastructure/step-ca)
    ```
 
-2. If Vault lookup fails, **immediately ask operator** for the provisioner password
-3. Confirm ESXi root access method (password or SSH key — likely same across all hosts)
+2. For each host, retrieve password automatically during deployment:
+
+   ```bash
+   HOST_SHORT="tiny1"  # e.g., tiny1, tiny2, superserver, etc.
+   ESXI_PASS=$(vault kv get -field=password kvProd_v2/infrastructure/esxi/$HOST_SHORT)
+   ```
+
+3. **Verify Vault access** — if lookups fail, immediately ask operator for credentials
 4. **STOP if any credential is unavailable** — record in Beads and halt
 
 ---
@@ -322,7 +334,13 @@ grep -i certmgmt /etc/vmware-vpx/vpxd.cfg
 
 **Execute this phase for EACH host, one at a time.**
 
-Recommended order (least critical first):
+### Automated Password Handling
+
+ESXi root passwords are stored in Vault at `kvProd_v2/infrastructure/esxi/{hostname}`. All SSH operations will automatically retrieve the password from Vault—no operator password entry required.
+
+If a password lookup fails, the agent will immediately halt and ask the operator for the credentials.
+
+### Recommended Deployment Order (Least Critical First)
 
 1. `tiny1.homelab.bjzy.me`
 2. `tiny2.homelab.bjzy.me`
@@ -345,16 +363,23 @@ bd add "ESXi cert replacement – <HOST_SHORT_NAME>" \
 ## 2.2 Backup Existing Certificate
 
 ```bash
-HOST="<HOST_FQDN>"
+HOST_SHORT="<HOST_SHORT_NAME>"  # e.g., tiny1
+HOST_FQDN="${HOST_SHORT}.homelab.bjzy.me"
+
+# Retrieve password from Vault automatically
+ESXI_PASS=$(vault kv get -field=password kvProd_v2/infrastructure/esxi/$HOST_SHORT)
+
+# Create backup using sshpass for authentication
 BACKUP_DIR="/tmp/esxi_cert_backup_$(date +%Y%m%d_%H%M%S)"
 
-ssh root@$HOST "mkdir -p $BACKUP_DIR && \
-  cp /etc/vmware/ssl/rui.crt $BACKUP_DIR/ && \
-  cp /etc/vmware/ssl/rui.key $BACKUP_DIR/ && \
-  ls -la $BACKUP_DIR/"
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$HOST_FQDN \
+  "mkdir -p $BACKUP_DIR && \
+   cp /etc/vmware/ssl/rui.crt $BACKUP_DIR/ && \
+   cp /etc/vmware/ssl/rui.key $BACKUP_DIR/ && \
+   ls -la $BACKUP_DIR/"
 ```
 
-**Record in Beads:** Backup directory path.
+**Record in Beads:** Backup directory path and confirmation that Vault retrieval was successful.
 
 ---
 
@@ -419,14 +444,31 @@ openssl verify -CAfile ca_chain.crt ${HOST}.crt
 
 ## 2.5 Transfer to ESXi Host
 
+**Password is retrieved automatically from Vault—no operator input required.**
+
 ```bash
-scp ${HOST}.crt ${HOST}.key ca_chain.crt root@$FQDN:/tmp/
+HOST_SHORT="<HOST_SHORT_NAME>"  # e.g., tiny1
+FQDN="${HOST_SHORT}.homelab.bjzy.me"
+
+# Retrieve password from Vault
+ESXI_PASS=$(vault kv get -field=password kvProd_v2/infrastructure/esxi/$HOST_SHORT)
+
+# Transfer certificate files using sshpass
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  'cat > /tmp/'${HOST_SHORT}'.crt' < ${HOST_SHORT}.crt
+
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  'cat > /tmp/'${HOST_SHORT}'.key' < ${HOST_SHORT}.key
+
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  'cat > /tmp/ca_chain.crt' < ca_chain.crt
 ```
 
 ### Verify transfer
 
 ```bash
-ssh root@$FQDN 'ls -la /tmp/*.crt /tmp/*.key'
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  'ls -la /tmp/'${HOST_SHORT}'.crt /tmp/'${HOST_SHORT}'.key /tmp/ca_chain.crt'
 ```
 
 ---
@@ -435,30 +477,27 @@ ssh root@$FQDN 'ls -la /tmp/*.crt /tmp/*.key'
 
 **This step will briefly interrupt the management UI.**
 
-### SSH to host and replace
-
 ```bash
-ssh root@$FQDN
-
-# Navigate to SSL directory
+# Create deployment script
+cat > /tmp/deploy_${HOST_SHORT}.sh << 'EOF'
+#!/bin/sh
 cd /etc/vmware/ssl
-
-# Backup current (already done above, but belt-and-suspenders)
 cp rui.crt rui.crt.old
 cp rui.key rui.key.old
-
-# Replace with new certificate
-mv /tmp/${HOST}.crt rui.crt
-mv /tmp/${HOST}.key rui.key
-
-# Set permissions
+mv -f /tmp/${HOST_SHORT}.crt rui.crt
+mv -f /tmp/${HOST_SHORT}.key rui.key
 chmod 644 rui.crt
 chmod 600 rui.key
-
-# Verify files
-ls -la rui.crt rui.key
+echo "✅ Certificate replaced"
 openssl x509 -in rui.crt -noout -subject -issuer
+EOF
+
+# Deploy using sshpass with Vault-retrieved password
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  'sh -s' < /tmp/deploy_${HOST_SHORT}.sh
 ```
+
+**Note:** Using `sh` script avoids interactive prompts and ensures compatibility with ESXi's limited shell environment.
 
 ---
 
@@ -466,10 +505,14 @@ openssl x509 -in rui.crt -noout -subject -issuer
 
 **This is REQUIRED for the new certificate to take effect.**
 
-### Method 1: Via SSH
+### Method 1: Via SSH (Recommended)
 
 ```bash
-ssh root@$FQDN '/etc/init.d/hostd restart && /etc/init.d/vpxa restart'
+sshpass -p "$ESXI_PASS" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no root@$FQDN \
+  '/etc/init.d/hostd restart && /etc/init.d/vpxa restart'
+
+# Wait for agents to stabilize
+sleep 30
 ```
 
 ### Method 2: Via DCUI (if SSH fails)
@@ -478,6 +521,7 @@ ssh root@$FQDN '/etc/init.d/hostd restart && /etc/init.d/vpxa restart'
 2. Press F2 → Troubleshooting Options
 3. Select "Restart Management Agents"
 4. Press F11 to confirm
+5. Wait ~30 seconds for agents to restart
 
 ### Wait for services to restart
 
