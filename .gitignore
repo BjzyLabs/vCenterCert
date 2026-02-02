@@ -1,4 +1,17 @@
 
+# Sensitive certificate and key files - NEVER commit these
+*.key
+*.pem
+*.p12
+*.pfx
+vcsa*.crt
+ca_chain*.crt
+!docs/step-ca-root.crt
+!docs/step-ca-chain.crt
+
+# Temporary encoded files
+*.b64
+
 # START Ruler Generated Files
 /.agent/rules/ruler.md
 /.agent/rules/ruler.md.bak
