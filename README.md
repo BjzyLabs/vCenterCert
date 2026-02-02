@@ -4,16 +4,23 @@ A comprehensive, test-driven process for renewing vCenter Machine SSL (HTTPS) ce
 
 ## Overview
 
-This repository preserves a proven, repeatable process for vCenter certificate renewal that was originally documented in personal notes. The goal is to never lose this process again and make it readily available for future certificate renewal operations.
+This repository documents a **proven, repeatable process** for renewing vCenter Machine SSL and ESXi host SSL certificates using Smallstep Step CA. All procedures have been successfully executed and validated in production (Feb 1-2, 2026).
+
+**Current Status (Feb 2, 2026):**
+- ✅ **vCenter VCSA** — Certificate renewed and deployed (expires Feb 1 2027)
+- ✅ **All 6 ESXi Hosts** — Certificates migrated from VMCA to Step CA (expire Feb 1-2 2027)
+- ✅ **Unified PKI** — vCenter + all ESXi hosts now on Step CA
 
 **Key Features:**
 
 - ✅ **Step CA Integration** — Automated certificate issuance via Smallstep Step CA
 - ✅ **Multi-SAN Support** — Current FQDN, future FQDN, short name, and IP address
+- ✅ **Vault Automation** — Credentials retrieved from Vault; zero manual password entry (for ESXi)
 - ✅ **Preflight Validation** — Comprehensive checks before any changes
 - ✅ **Safety-First** — Explicit checkpoints and operator approval gates
 - ✅ **Beads Tracking** — Full audit trail via Beads progress tracking system
 - ✅ **Rollback Ready** — Timestamped backups and recovery procedures
+- ✅ **Bash Patterns Documented** — All complex command patterns preserved in Notion for future reference
 
 ## Quick Start
 
@@ -41,10 +48,12 @@ This repository preserves a proven, repeatable process for vCenter certificate r
 
 | File | Purpose |
 |------|---------|
-| `README.md` | This file — overview and quick start |
-| `docs/vcenter-tls-renewal-prompt.md` | Complete renewal process with all phases, checks, and guardrails |
+| `README.md` | This file — overview and current status |
+| `docs/vcenter-tls-renewal-prompt.md` | vCenter renewal procedure (9 phases, fully documented) |
+| `docs/esxi-tls-migration-prompt.md` | ESXi migration procedure with **Vault automation** for 6 hosts |
 | `docs/step-ca-root.crt` | Step CA root certificate (public, for reference) |
 | `standards/` | Bjzy Labs global standards (GITFLOW, testing, security, etc.) |
+| **Notion Documentation** | [Complete deployment process with all bash patterns](https://www.notion.so/2fb3569aa255818c918fca25c11d617a) — includes challenges, solutions, and automation approach |
 
 ## Process Highlights
 
@@ -100,16 +109,26 @@ This repository follows **Bjzy Labs GitFlow** and code standards:
 
 See `standards/02_GITFLOW.md` for complete workflow details.
 
-## Questions?
+## Technical Documentation
 
-Refer to:
+**For Detailed Bash Patterns & Solutions:**
+- [Complete Deployment Process (Feb 2026) — Notion](https://www.notion.so/2fb3569aa255818c918fca25c11d617a)
+  - All bash command patterns used in deployment
+  - Challenges encountered and solutions
+  - Vault automation approach for future renewals
+  - Critical file transfer, certificate generation, and validation techniques
 
-- `docs/vcenter-tls-renewal-prompt.md` — Complete step-by-step renewal guide
+**For Procedural Details:**
+- `docs/vcenter-tls-renewal-prompt.md` — vCenter renewal (9 phases)
+- `docs/esxi-tls-migration-prompt.md` — ESXi migration (with Vault automation)
+
+**For Infrastructure Standards:**
 - `standards/` — Bjzy Labs infrastructure standards and best practices
 - Home Lab Docs — [AGENTS Workspace (Notion)](https://www.notion.so/AGENTS-Workspace-25a3569aa25581069532e793601f1fba)
 
 ---
 
-**Last Updated:** February 1, 2026
+**Last Updated:** February 2, 2026
+**Status:** ✅ Complete — All hosts (vCenter + 6 ESXi) deployed and validated
 **Maintained By:** Bjzy Labs Infrastructure Team
 **Repository:** [BjzyLabs/vCenterCert](https://github.com/BjzyLabs/vCenterCert)
