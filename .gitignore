@@ -18,18 +18,14 @@ ca_chain*.crt
 /.agent/skills
 /.agents/skills
 /.claude/skills
-/.clinerules
-/.clinerules.bak
+/.codex/config.toml
+/.codex/config.toml.bak
 /.codex/skills
 /.cursor/skills
-/.factory/skills
 /.gemini/skills
 /.goosehints
 /.goosehints.bak
-/.opencode/skill
-/.pi/skills
-/.roo/skills
-/.vibe/skills
+/.windsurf/skills
 /AGENTS.md
 /AGENTS.md.bak
 /CLAUDE.md
@@ -37,3 +33,22 @@ ca_chain*.crt
 /GEMINI.md
 /GEMINI.md.bak
 # END Ruler Generated Files
+
+
+
+
+
+
+
+
+# START Bjzy Labs Generated Context
+/standards/
+/.ruler/00_global.md
+/.ruler/skills/
+/.agent/skills/
+/.agents/skills/
+# END Bjzy Labs Generated Context
+
+# START Bjzy Labs Generated Root Context
+/.gemini/settings.json
+# END Bjzy Labs Generated Root Context
