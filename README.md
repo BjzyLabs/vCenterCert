@@ -20,7 +20,7 @@ This repository documents a **proven, repeatable process** for renewing vCenter 
 - ✅ **Safety-First** — Explicit checkpoints and operator approval gates
 - ✅ **Beads Tracking** — Full audit trail via Beads progress tracking system
 - ✅ **Rollback Ready** — Timestamped backups and recovery procedures
-- ✅ **Bash Patterns Documented** — All complex command patterns preserved in Notion for future reference
+- ✅ **Bash Patterns Documented** — All complex command patterns preserved in AppFlowy for future reference
 
 ## Quick Start
 
@@ -53,7 +53,7 @@ This repository documents a **proven, repeatable process** for renewing vCenter 
 | `docs/esxi-tls-migration-prompt.md` | ESXi migration procedure with **Vault automation** for 6 hosts |
 | `docs/step-ca-root.crt` | Step CA root certificate (public, for reference) |
 | `standards/` | Bjzy Labs global standards (GITFLOW, testing, security, etc.) |
-| **Notion Documentation** | [Complete deployment process with all bash patterns](https://www.notion.so/2fb3569aa255818c918fca25c11d617a) — includes challenges, solutions, and automation approach |
+| **AppFlowy Documentation** | "Complete Deployment Process (Feb 2026)" page with all bash patterns (https://appflowy.bjzy.me; find by title) — includes challenges, solutions, and automation approach |
 
 ## Process Highlights
 
@@ -112,7 +112,7 @@ See `standards/02_GITFLOW.md` for complete workflow details.
 ## Technical Documentation
 
 **For Detailed Bash Patterns & Solutions:**
-- [Complete Deployment Process (Feb 2026) — Notion](https://www.notion.so/2fb3569aa255818c918fca25c11d617a)
+- "Complete Deployment Process (Feb 2026)" — AppFlowy page (https://appflowy.bjzy.me; find by title)
   - All bash command patterns used in deployment
   - Challenges encountered and solutions
   - Vault automation approach for future renewals
@@ -124,7 +124,7 @@ See `standards/02_GITFLOW.md` for complete workflow details.
 
 **For Infrastructure Standards:**
 - `standards/` — Bjzy Labs infrastructure standards and best practices
-- Home Lab Docs — [AGENTS Workspace (Notion)](https://www.notion.so/AGENTS-Workspace-25a3569aa25581069532e793601f1fba)
+- Home Lab Docs — [AppFlowy workspace](https://appflowy.bjzy.me)
 
 ---
 
